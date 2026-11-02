@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cash Advance Management</title>
+<meta name="description" content="Cash Advance System – save cash advances and manage deductions with Supabase." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ══════════ SIDEBAR ══════════ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h2>⚙️ Menu</h2>
+      <button class="sidebar-close" id="sidebarClose">✕</button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="#" class="nav-link active" data-page="dashboard">
+        <span class="nav-icon">📊</span> Dashboard
+      </a>
+      <a href="#" class="nav-link" data-page="page-areas">
+        <span class="nav-icon">📍</span> Manage Areas
+      </a>
+      <a href="#" class="nav-link" data-page="page-employees">
+        <span class="nav-icon">👤</span> Manage Employees
+      </a>
+      <a href="#" class="nav-link" data-page="page-ca-form">
+        <span class="nav-icon">💵</span> Cash Advance Form
+      </a>
+      <a href="#" class="nav-link" data-page="page-ca-table">
+        <span class="nav-icon">💰</span> Cash Advance Table
+      </a>
+      <a href="#" class="nav-link" data-page="page-deductions">
+        <span class="nav-icon">📋</span> Deductions
+      </a>
+      <a href="#" class="nav-link" data-page="page-logs">
+        <span class="nav-icon">🗒️</span> Logs
+      </a>
+    </nav>
+  </aside>
+
+  <!-- Sidebar overlay (mobile) -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- ══════════ MAIN CONTENT ══════════ -->
+  <main class="main-content" id="mainContent">
+    <div class="top-bar">
+      <button class="btn-icon-only" id="sidebarToggle" title="Menu">☰</button>
+      <h1 class="title">Cash Advance System</h1>
+      <div style="width:42px;"></div>
+    </div>
+
+    <!-- ══════════ PAGE: Dashboard ══════════ -->
+    <section class="page active" id="dashboard">
+      <h2 class="page-title">📊 Dashboard</h2>
+      <div class="stats-grid">
+        <div class="stat-card stat-blue">
+          <div class="stat-icon">💰</div>
+          <div class="stat-info">
+            <span class="stat-label">Total Cash Advance</span>
+            <span class="stat-value" id="statTotalCA">₱0.00</span>
+          </div>
+        </div>
+        <div class="stat-card stat-green">
+          <div class="stat-icon">✅</div>
+          <div class="stat-info">
+            <span class="stat-label">Total Paid</span>
+            <span class="stat-value" id="statTotalPaid">₱0.00</span>
+          </div>
+        </div>
+        <div class="stat-card stat-orange">
+          <div class="stat-icon">⏳</div>
+          <div class="stat-info">
+            <span class="stat-label">Total Remaining</span>
+            <span class="stat-value" id="statTotalRemaining">₱0.00</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════ PAGE: Manage Areas ══════════ -->
+    <section class="page" id="page-areas">
+      <h2 class="page-title">📍 Manage Areas</h2>
+      <div class="card">
+        <div class="inline-form">
+          <input type="text" id="newAreaInput" placeholder="Enter new area name…" />
+          <button class="btn primary" id="addAreaBtn">➕ Add Area</button>
+        </div>
+        <ul class="item-list" id="areaList"></ul>
+      </div>
+    </section>
+
+    <!-- ══════════ PAGE: Manage Employees ══════════ -->
+    <section class="page" id="page-employees">
+      <h2 class="page-title">👤 Manage Employees</h2>
+      <div class="card">
+        <div class="form-grid-3">
+          <div class="field">
+            <label for="newEmpName">Employee Name</label>
+            <input type="text" id="newEmpName" placeholder="Full name…" />
+          </div>
+          <div class="field">
+            <label for="newEmpArea">Area</label>
+            <select id="newEmpArea">
+              <option value="" disabled selected>Select area</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="newEmpPaySlip">Pay Slip No.</label>
+            <input type="text" id="newEmpPaySlip" placeholder="PS-00123" />
+          </div>
+        </div>
+        <button class="btn primary" id="addEmployeeBtn" style="margin-top:1rem; width:100%;">➕ Add Employee</button>
+        <ul class="item-list" id="employeeList"></ul>
+      </div>
+    </section>
+
+    <!-- ══════════ PAGE: Cash Advance Form ══════════ -->
+    <section class="page" id="page-ca-form">
+      <h2 class="page-title">💵 New Cash Advance</h2>
+      <div class="card">
+        <form id="cashForm" class="form">
+          <div class="form-grid-2">
+            <div class="field">
+              <label for="area">Area</label>
+              <select id="area" name="area" required>
+                <option value="" disabled selected>Select area</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="empName">Employee Name</label>
+              <select id="empName" name="empName" required>
+                <option value="" disabled selected>Select employee</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="paySlip">Pay Slip No.</label>
+              <input type="text" id="paySlip" name="paySlip" required />
+            </div>
+            <div class="field">
+              <label for="dateRequested">Date Requested</label>
+              <input type="date" id="dateRequested" name="dateRequested" required />
+            </div>
+            <div class="field">
+              <label for="dateApproved">Date Approved</label>
+              <input type="date" id="dateApproved" name="dateApproved" required />
+            </div>
+            <div class="field">
+              <label for="initialBalance">Initial Balance</label>
+              <input type="number" id="initialBalance" name="initialBalance" min="0" step="0.01" required />
+            </div>
+            <div class="field">
+              <label for="remainingBalance">Remaining Balance</label>
+              <input type="number" id="remainingBalance" name="remainingBalance" readonly />
+            </div>
+            <div class="field">
+              <label for="deductionStart">Date of Deduction (Start)</label>
+              <input type="date" id="deductionStart" name="deductionStart" required />
+            </div>
+          </div>
+          <button type="button" id="submitCashAdvanceBtn" class="btn primary save-btn">
+            <span class="btn-icon">💾</span> Save Cash Advance
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ══════════ PAGE: Cash Advance Table ══════════ -->
+    <section class="page" id="page-ca-table">
+      <h2 class="page-title">💰 Cash Advance Table</h2>
+      <div class="card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Employee</th>
+              <th>Area</th>
+              <th>Pay Slip</th>
+              <th>Initial</th>
+              <th>Remaining</th>
+              <th>Start Date</th>
+            </tr>
+          </thead>
+          <tbody id="cashAdvancesBody"></tbody>
+        </table>
+        <p class="empty-msg" id="caTableEmpty">No cash advances recorded yet.</p>
+      </div>
+    </section>
+
+    <!-- ══════════ PAGE: Deductions ══════════ -->
+    <section class="page" id="page-deductions">
+      <h2 class="page-title">📋 Deductions</h2>
+      <div class="card">
+        <!-- Employee selector -->
+        <div class="deduction-employee-select">
+          <div class="field" style="flex:1;">
+            <label for="deductEmpSelect">Select Employee to Deduct</label>
+            <select id="deductEmpSelect">
+              <option value="" disabled selected>Choose employee with active CA…</option>
+            </select>
+          </div>
+          <button type="button" id="loadEmpCABtn" class="btn primary btn-sm">Load CA</button>
+        </div>
+
+        <!-- CA info banner -->
+        <div class="ca-info-banner" id="caInfoBanner" style="display:none;">
+          <div class="ca-info-item"><span class="ca-info-label">Employee</span><span id="caInfoName">—</span></div>
+          <div class="ca-info-item"><span class="ca-info-label">Pay Slip</span><span id="caInfoPaySlip">—</span></div>
+          <div class="ca-info-item"><span class="ca-info-label">Initial</span><span id="caInfoInitial">—</span></div>
+          <div class="ca-info-item highlight"><span class="ca-info-label">Remaining</span><span id="caInfoRemaining">—</span></div>
+        </div>
+
+        <div class="deduction-inputs">
+          <div class="field">
+            <label for="deductionMonth">Month</label>
+            <input type="month" id="deductionMonth" />
+          </div>
+          <div class="field">
+            <label for="deductionDate">Date</label>
+            <input type="date" id="deductionDate" />
+          </div>
+          <div class="field">
+            <label for="deductionAmount">Amount</label>
+            <input type="number" id="deductionAmount" min="0" step="0.01" />
+          </div>
+          <button type="button" id="addDeductionBtn" class="btn primary">Add Deduction</button>
+        </div>
+
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Month</th>
+              <th>Date</th>
+              <th>Amount</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="deductionsBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══════════ PAGE: Logs ══════════ -->
+    <section class="page" id="page-logs">
+      <h2 class="page-title">🗒️ Activity Logs</h2>
+      <div class="card">
+        <div class="log-box" id="logContent">Waiting for actions…</div>
+      </div>
+    </section>
+
+    <!-- Status bar -->
+    <div id="statusBar" class="status-bar"></div>
+  </main>
+
+  <!-- Supabase client CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

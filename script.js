@@ -9,6 +9,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const { createClient } = window.supabase;
   const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+  // ── Session state ──
+  const session = { role: null, payslip: null };
+  const persistSession = () => localStorage.setItem('caSession', JSON.stringify(session));
+  const clearSession   = () => { session.role = null; session.payslip = null; localStorage.removeItem('caSession'); };
+  const loadSession    = () => {
+    try { const s = JSON.parse(localStorage.getItem('caSession')); if (s && s.role) Object.assign(session, s); } catch(e) {}
+  };
+  loadSession();
+
   // ── DOM refs ──
   const sidebar        = document.getElementById('sidebar');
   const sidebarOverlay = document.getElementById('sidebarOverlay');
@@ -103,14 +112,61 @@ document.addEventListener('DOMContentLoaded', () => {
   const navLinks = document.querySelectorAll('.nav-link');
   const pages    = document.querySelectorAll('.page');
 
+  // ── Role-based UI ──
+  function applyRoleUI() {
+    const overlay  = document.getElementById('loginOverlay');
+    const wrapper  = document.getElementById('appWrapper');
+    const badge    = document.getElementById('userBadge');
+    const banner   = document.getElementById('viewerInfoBanner');
+    const payDisp  = document.getElementById('viewerPayslipDisplay');
+
+    if (!session.role) {
+      overlay.classList.remove('hidden');
+      wrapper.classList.add('hidden');
+      return;
+    }
+
+    overlay.classList.add('hidden');
+    wrapper.classList.remove('hidden');
+
+    // Badge
+    badge.textContent = session.role === 'admin' ? '🔐 Admin' : `👁️ Viewer (${session.payslip})`;
+    badge.className   = 'user-badge role-' + session.role;
+
+    // Nav visibility
+    navLinks.forEach(link => {
+      const allowed = link.dataset.role; // "admin" or "all"
+      if (session.role === 'admin') {
+        link.style.display = '';
+      } else {
+        // Viewer: only show links marked "all"
+        link.style.display = allowed === 'all' ? '' : 'none';
+      }
+    });
+
+    // Viewer info banner
+    if (session.role === 'viewer' && banner) {
+      banner.classList.remove('hidden');
+      payDisp.textContent = session.payslip;
+    } else if (banner) {
+      banner.classList.add('hidden');
+    }
+  }
+
   function showPage(pageId) {
+    // Role guard – viewers can only see "all" pages
+    const targetPage = document.getElementById(pageId);
+    if (targetPage && session.role === 'viewer' && targetPage.dataset.role === 'admin') {
+      showStatus('⚠️ Viewers cannot access this page.', 'error');
+      return;
+    }
+
     // Hide all pages
     pages.forEach(p => p.classList.remove('active'));
     // Remove active from nav links
     navLinks.forEach(l => l.classList.remove('active'));
 
     // Show target page
-    const targetPage = document.getElementById(pageId);
     if (targetPage) {
       targetPage.classList.add('active');
     }
@@ -350,10 +406,17 @@ document.addEventListener('DOMContentLoaded', () => {
   //  CASH ADVANCE TABLE
   // ═══════════════════════════════════════
   async function loadCashTable() {
-    const { data, error } = await db
+    let query = db
       .from('cash_advances')
       .select('*')
       .order('created_at', { ascending: false });
+
+    // Viewer: filter to their own payslip only
+    if (session.role === 'viewer' && session.payslip) {
+      query = query.eq('pay_slip_no', session.payslip);
+    }
+
+    const { data, error } = await query;
 
     if (error) { console.error(error); return; }
 
@@ -536,15 +599,102 @@ document.addEventListener('DOMContentLoaded', () => {
     showStatus(`🔄 Deduction removed — Balance: ${fmt(newRemaining)}`);
     addLog(`Deduction removed — Balance restored to ${fmt(newRemaining)}`);
   });
+  // ═══════════════════════════════════════
+  //  LOGIN / LOGOUT
+  // ═══════════════════════════════════════
+  const ADMIN_USER = 'admin';
+  const ADMIN_PASS = 'admin123';
+
+  const loginOverlay    = document.getElementById('loginOverlay');
+  const adminLoginForm  = document.getElementById('adminLoginForm');
+  const viewerLoginForm = document.getElementById('viewerLoginForm');
+  const loginTabs       = document.getElementById('loginTabs');
+  const loginError      = document.getElementById('loginError');
+  const loginErrorMsg   = document.getElementById('loginErrorMsg');
+  const logoutBtn       = document.getElementById('logoutBtn');
+
+  // Tab switching
+  loginTabs.addEventListener('click', (e) => {
+    if (!e.target.matches('.login-tab')) return;
+    const role = e.target.dataset.role;
+    loginTabs.querySelectorAll('.login-tab').forEach(t => t.classList.toggle('active', t.dataset.role === role));
+    adminLoginForm.classList.toggle('hidden', role !== 'admin');
+    viewerLoginForm.classList.toggle('hidden', role !== 'viewer');
+    loginError.classList.add('hidden');
+  });
+
+  // Admin login
+  adminLoginForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const user = document.getElementById('adminUsername').value.trim();
+    const pass = document.getElementById('adminPassword').value;
+    if (user === ADMIN_USER && pass === ADMIN_PASS) {
+      session.role = 'admin';
+      session.payslip = null;
+      persistSession();
+      applyRoleUI();
+      showPage('dashboard');
+      loginError.classList.add('hidden');
+      addLog('Admin logged in.');
+    } else {
+      loginErrorMsg.textContent = 'Invalid admin credentials';
+      loginError.classList.remove('hidden');
+    }
+  });
+
+  // Viewer login – validate payslip against employees table
+  viewerLoginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const payslip = document.getElementById('viewerPayslip').value.trim();
+    if (!payslip) { loginErrorMsg.textContent = 'Enter a Pay Slip Number'; loginError.classList.remove('hidden'); return; }
+
+    const { data, error } = await db.from('employees').select('pay_slip_no').eq('pay_slip_no', payslip).single();
+    if (error || !data) {
+      loginErrorMsg.textContent = 'Pay Slip Number not found';
+      loginError.classList.remove('hidden');
+      return;
+    }
+
+    session.role = 'viewer';
+    session.payslip = payslip;
+    persistSession();
+    applyRoleUI();
+    showPage('page-ca-table');
+    loginError.classList.add('hidden');
+    addLog(`Viewer logged in (${payslip}).`);
+  });
+
+  // Password toggle
+  document.getElementById('togglePw').addEventListener('click', () => {
+    const pw = document.getElementById('adminPassword');
+    pw.type = pw.type === 'password' ? 'text' : 'password';
+  });
+
+  // Logout
+  logoutBtn.addEventListener('click', () => {
+    clearSession();
+    applyRoleUI();
+    adminLoginForm.reset();
+    viewerLoginForm.reset();
+    loginTabs.querySelectorAll('.login-tab').forEach(t => t.classList.toggle('active', t.dataset.role === 'admin'));
+    adminLoginForm.classList.remove('hidden');
+    viewerLoginForm.classList.add('hidden');
+    loginError.classList.add('hidden');
+    addLog('User logged out.');
+  });
 
   // ═══════════════════════════════════════
   //  INIT
   // ═══════════════════════════════════════
   (async () => {
+    applyRoleUI();
     await loadAreas();
     await loadEmployees();
     await loadDashboard();
     await loadDeductionEmployees();
+    // Auto-navigate to correct default page if already logged in
+    if (session.role === 'admin') showPage('dashboard');
+    else if (session.role === 'viewer') showPage('page-ca-table');
     addLog('System initialized.');
   })();
 });

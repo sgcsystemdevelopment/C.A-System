@@ -74,6 +74,82 @@ document.addEventListener('DOMContentLoaded', () => {
   // Status bar
   const statusBar  = document.getElementById('statusBar');
 
+  // ── Theme Switcher refs & logic ──
+  const THEME_KEY        = 'ca_theme';
+  const themeDarkBtn     = document.getElementById('themeDarkBtn');
+  const themeClassicBtn  = document.getElementById('themeClassicBtn');
+  const themeStatusPill  = document.getElementById('themeStatusPill');
+  const loginThemeToggle = document.getElementById('loginThemeToggle');
+  const loginThemeIcon   = document.getElementById('loginThemeIcon');
+  const loginThemeText   = document.getElementById('loginThemeText');
+
+  function applyTheme(theme, save = true) {
+    const isClassic = theme === 'classic';
+    const activeTheme = isClassic ? 'classic' : 'dark';
+
+    if (isClassic) {
+      document.documentElement.setAttribute('data-theme', 'classic');
+      document.body.classList.add('theme-classic');
+    } else {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      document.body.classList.remove('theme-classic');
+    }
+
+    if (themeDarkBtn && themeClassicBtn) {
+      themeDarkBtn.classList.toggle('active', !isClassic);
+      themeClassicBtn.classList.toggle('active', isClassic);
+    }
+
+    if (themeStatusPill) {
+      themeStatusPill.textContent = isClassic ? 'Classic' : 'Dark';
+    }
+
+    if (loginThemeIcon && loginThemeText) {
+      loginThemeIcon.textContent = isClassic ? '☀️' : '🌙';
+      loginThemeText.textContent = isClassic ? 'Classic' : 'Dark';
+    }
+
+    if (save) {
+      try {
+        localStorage.setItem(THEME_KEY, activeTheme);
+      } catch (e) {}
+    }
+  }
+
+  function initTheme() {
+    let savedTheme = 'dark';
+    try {
+      savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
+    } catch (e) {}
+
+    applyTheme(savedTheme, false);
+
+    if (themeDarkBtn) {
+      themeDarkBtn.addEventListener('click', () => {
+        applyTheme('dark');
+        addLog('Theme switched to Dark theme.');
+      });
+    }
+
+    if (themeClassicBtn) {
+      themeClassicBtn.addEventListener('click', () => {
+        applyTheme('classic');
+        addLog('Theme switched to Classic theme.');
+      });
+    }
+
+    if (loginThemeToggle) {
+      loginThemeToggle.addEventListener('click', () => {
+        const current = document.documentElement.getAttribute('data-theme') || 'dark';
+        const next = current === 'classic' ? 'dark' : 'classic';
+        applyTheme(next);
+        addLog(`Theme switched to ${next === 'classic' ? 'Classic' : 'Dark'} theme.`);
+      });
+    }
+  }
+
+  initTheme();
+
   let selectedCashAdvanceId = null;
 
   // ── Helpers ──
@@ -183,7 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load data for the target page
     if (pageId === 'dashboard')      loadDashboard();
     if (pageId === 'page-ca-table')  loadCashTable();
-    if (pageId === 'page-deductions') loadDeductionEmployees();
+    if (pageId === 'page-deductions') { loadDeductionEmployees(); loadDeductionHistory(); }
   }
 
   navLinks.forEach(link => {
@@ -510,6 +586,46 @@ document.addEventListener('DOMContentLoaded', () => {
         <td><button class="action-btn" data-ded-id="${d.id}" data-amount="${d.amount}">Remove</button></td>
       `;
       deductionsBody.appendChild(tr);
+    });
+  }
+
+  // ═══════════════════════════════════════
+  //  DEDUCTION HISTORY (all employees)
+  // ═══════════════════════════════════════
+  const deductionHistoryBody  = document.getElementById('deductionHistoryBody');
+  const deductionHistoryEmpty = document.getElementById('deductionHistoryEmpty');
+
+  async function loadDeductionHistory() {
+    const { data, error } = await db
+      .from('deductions')
+      .select('*, cash_advances(employee_name, pay_slip_no)')
+      .order('created_at', { ascending: false });
+
+    if (error) { console.error('Deduction history error:', error); return; }
+
+    deductionHistoryBody.innerHTML = '';
+
+    if (!data || data.length === 0) {
+      deductionHistoryEmpty.style.display = 'block';
+      return;
+    }
+
+    deductionHistoryEmpty.style.display = 'none';
+
+    data.forEach((d, i) => {
+      const empName  = d.cash_advances?.employee_name || '—';
+      const paySlip  = d.cash_advances?.pay_slip_no   || '—';
+      const monthStr = d.month ? d.month.substring(0, 7) : '—';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${i + 1}</td>
+        <td>${empName}</td>
+        <td>${paySlip}</td>
+        <td>${monthStr}</td>
+        <td>${d.deduction_date}</td>
+        <td>${fmt(d.amount)}</td>
+      `;
+      deductionHistoryBody.appendChild(tr);
     });
   }
 

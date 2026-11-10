@@ -1152,20 +1152,153 @@ input[readonly] {
   min-width: 120px;
 }
 
+.action-btn-group {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  white-space: nowrap;
+}
+
 .action-btn {
   background: rgba(255, 80, 80, 0.15);
   color: var(--danger);
   border: 1px solid rgba(255, 80, 80, 0.25);
   border-radius: 6px;
-  padding: 0.3rem 0.7rem;
+  padding: 0.3rem 0.65rem;
   cursor: pointer;
   font-size: 0.82rem;
   font-weight: 600;
   transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .action-btn:hover {
   background: rgba(255, 80, 80, 0.3);
+  transform: translateY(-1px);
+}
+
+.action-btn.edit {
+  background: rgba(100, 149, 237, 0.15);
+  color: var(--primary);
+  border-color: rgba(100, 149, 237, 0.3);
+}
+
+.action-btn.edit:hover {
+  background: rgba(100, 149, 237, 0.28);
+}
+
+.action-btn.delete {
+  background: rgba(255, 80, 80, 0.15);
+  color: var(--danger);
+  border-color: rgba(255, 80, 80, 0.3);
+}
+
+.action-btn.delete:hover {
+  background: rgba(255, 80, 80, 0.3);
+}
+
+.btn.secondary {
+  background: var(--item-bg);
+  border: 1px solid var(--item-border);
+  color: var(--text-primary);
+}
+
+.btn.secondary:hover {
+  background: var(--item-hover-bg);
+  color: var(--text-primary);
+}
+
+/* ═══════ Modal Styles ═══════ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1.5rem;
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
+.modal-overlay.hidden {
+  display: none;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.modal-card {
+  background: var(--sidebar-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  animation: modalSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalSlideIn {
+  from {
+    transform: translateY(20px) scale(0.97);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  transition: all 0.15s;
+}
+
+.modal-close:hover {
+  color: var(--text-primary);
+  background: var(--item-hover-bg);
+}
+
+.modal-form {
+  padding: 1.5rem;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--card-border);
 }
 
 /* ═══════ Log Box ═══════ */
@@ -1257,6 +1390,44 @@ body.theme-classic .action-btn {
 html[data-theme="classic"] .action-btn:hover,
 body.theme-classic .action-btn:hover {
   background: #fee2e2;
+}
+
+html[data-theme="classic"] .action-btn.edit,
+body.theme-classic .action-btn.edit {
+  background: #eff6ff;
+  color: #2563eb;
+  border-color: #bfdbfe;
+}
+
+html[data-theme="classic"] .action-btn.edit:hover,
+body.theme-classic .action-btn.edit:hover {
+  background: #dbeafe;
+}
+
+html[data-theme="classic"] .btn.secondary,
+body.theme-classic .btn.secondary {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+html[data-theme="classic"] .btn.secondary:hover,
+body.theme-classic .btn.secondary:hover {
+  background: #e2e8f0;
+}
+
+html[data-theme="classic"] .modal-card,
+body.theme-classic .modal-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+html[data-theme="classic"] .modal-header,
+body.theme-classic .modal-header,
+html[data-theme="classic"] .modal-footer,
+body.theme-classic .modal-footer {
+  border-color: #f1f5f9;
 }
 
 html[data-theme="classic"] .status-bar.success,

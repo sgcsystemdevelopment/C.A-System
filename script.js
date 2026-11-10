@@ -505,6 +505,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     caTableEmpty.style.display = 'none';
 
+    const isAdmin = session.role === 'admin';
+
     data.forEach((ca, i) => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
@@ -515,8 +517,219 @@ document.addEventListener('DOMContentLoaded', () => {
         <td>${fmt(ca.initial_balance)}</td>
         <td>${fmt(ca.remaining_balance)}</td>
         <td>${ca.deduction_start}</td>
+        <td class="action-cell">
+          ${isAdmin ? `
+            <div class="action-btn-group">
+              <button type="button" class="action-btn edit ca-edit-btn" data-id="${ca.id}" title="Edit Cash Advance">✏️ Edit</button>
+              <button type="button" class="action-btn delete ca-del-btn" data-id="${ca.id}" title="Delete Cash Advance">🗑️ Delete</button>
+            </div>
+          ` : '—'}
+        </td>
       `;
       cashAdvancesBody.appendChild(tr);
+    });
+  }
+
+  // ═══════════════════════════════════════
+  //  CASH ADVANCE – EDIT & DELETE ACTIONS
+  // ═══════════════════════════════════════
+  const editCAModal         = document.getElementById('editCAModal');
+  const editCAForm          = document.getElementById('editCAForm');
+  const editCAId            = document.getElementById('editCAId');
+  const editAreaSelect      = document.getElementById('editArea');
+  const editEmpNameSelect   = document.getElementById('editEmpName');
+  const editPaySlipInput    = document.getElementById('editPaySlip');
+  const editDateRequested   = document.getElementById('editDateRequested');
+  const editDateApproved    = document.getElementById('editDateApproved');
+  const editInitialBalance  = document.getElementById('editInitialBalance');
+  const editRemainingBalance= document.getElementById('editRemainingBalance');
+  const editDeductionStart  = document.getElementById('editDeductionStart');
+  const closeEditCAModalBtn = document.getElementById('closeEditCAModalBtn');
+  const cancelEditCABtn     = document.getElementById('cancelEditCABtn');
+  const saveEditCABtn       = document.getElementById('saveEditCABtn');
+
+  function closeEditModal() {
+    if (editCAModal) editCAModal.classList.add('hidden');
+  }
+
+  if (closeEditCAModalBtn) closeEditCAModalBtn.addEventListener('click', closeEditModal);
+  if (cancelEditCABtn)     cancelEditCABtn.addEventListener('click', closeEditModal);
+
+  if (editCAModal) {
+    editCAModal.addEventListener('click', (e) => {
+      if (e.target === editCAModal) closeEditModal();
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && editCAModal && !editCAModal.classList.contains('hidden')) {
+      closeEditModal();
+    }
+  });
+
+  // When changing employee in edit modal, auto-fill area and payslip
+  if (editEmpNameSelect) {
+    editEmpNameSelect.addEventListener('change', () => {
+      const selected = editEmpNameSelect.selectedOptions[0];
+      if (selected) {
+        if (selected.dataset.payslip) editPaySlipInput.value = selected.dataset.payslip;
+        if (selected.dataset.area && editAreaSelect) editAreaSelect.value = selected.dataset.area;
+      }
+    });
+  }
+
+  async function populateEditModalLookups(selectedArea, selectedEmp) {
+    // 1. Populate Areas
+    const { data: areas } = await db.from('areas').select('*').order('name');
+    if (areas && editAreaSelect) {
+      const defaultOpt = '<option value="" disabled>Select area</option>';
+      const opts = areas.map(a => `<option value="${a.name}" ${a.name === selectedArea ? 'selected' : ''}>${a.name}</option>`).join('');
+      editAreaSelect.innerHTML = defaultOpt + opts;
+      if (selectedArea) editAreaSelect.value = selectedArea;
+    }
+
+    // 2. Populate Employees
+    const { data: emps } = await db.from('employees').select('*').order('name');
+    if (emps && editEmpNameSelect) {
+      let optionsHtml = '<option value="" disabled>Select employee</option>';
+      let found = false;
+      emps.forEach(e => {
+        const isSel = e.name === selectedEmp;
+        if (isSel) found = true;
+        optionsHtml += `<option value="${e.name}" data-payslip="${e.pay_slip_no || ''}" data-area="${e.area || ''}" ${isSel ? 'selected' : ''}>${e.name}</option>`;
+      });
+      if (!found && selectedEmp) {
+        optionsHtml = `<option value="${selectedEmp}" selected>${selectedEmp}</option>` + optionsHtml;
+      }
+      editEmpNameSelect.innerHTML = optionsHtml;
+      if (selectedEmp) editEmpNameSelect.value = selectedEmp;
+    }
+  }
+
+  // Handle Edit and Delete clicks from Cash Advance Table
+  cashAdvancesBody.addEventListener('click', async (e) => {
+    // ── Delete Action ──
+    const delBtn = e.target.closest('.ca-del-btn');
+    if (delBtn) {
+      const caId = delBtn.dataset.id;
+      const tr = delBtn.closest('tr');
+      const empName = tr ? tr.children[1].textContent.trim() : 'this employee';
+      const initialAmt = tr ? tr.children[4].textContent.trim() : '';
+
+      if (!confirm(`Are you sure you want to delete the cash advance for "${empName}" (${initialAmt})?\n\nNote: Any deductions linked to this cash advance will also be permanently deleted.`)) {
+        return;
+      }
+
+      delBtn.disabled = true;
+      delBtn.textContent = '⏳…';
+
+      const { error } = await db.from('cash_advances').delete().eq('id', caId);
+      if (error) {
+        console.error('Delete CA error:', error);
+        showStatus('❌ Delete failed: ' + (error.message || 'Unknown error'), 'error');
+        delBtn.disabled = false;
+        delBtn.textContent = '🗑️ Delete';
+        return;
+      }
+
+      showStatus(`🗑️ Cash advance for "${empName}" deleted.`);
+      addLog(`CA deleted: ${empName} (id: ${caId.substring(0, 8)}…)`);
+
+      await loadCashTable();
+      await loadDashboard();
+      await loadDeductionEmployees();
+      return;
+    }
+
+    // ── Edit Action ──
+    const editBtn = e.target.closest('.ca-edit-btn');
+    if (editBtn) {
+      const caId = editBtn.dataset.id;
+
+      editBtn.disabled = true;
+      editBtn.textContent = '⏳…';
+
+      const { data: ca, error } = await db
+        .from('cash_advances')
+        .select('*')
+        .eq('id', caId)
+        .single();
+
+      editBtn.disabled = false;
+      editBtn.textContent = '✏️ Edit';
+
+      if (error || !ca) {
+        console.error('Fetch CA for edit error:', error);
+        alert('Could not load cash advance details: ' + (error?.message || 'Record not found'));
+        return;
+      }
+
+      editCAId.value             = ca.id;
+      editPaySlipInput.value     = ca.pay_slip_no || '';
+      editDateRequested.value    = ca.date_requested || '';
+      editDateApproved.value     = ca.date_approved || '';
+      editInitialBalance.value   = ca.initial_balance;
+      editRemainingBalance.value = ca.remaining_balance;
+      editDeductionStart.value   = ca.deduction_start || '';
+
+      await populateEditModalLookups(ca.area, ca.employee_name);
+
+      if (editCAModal) editCAModal.classList.remove('hidden');
+    }
+  });
+
+  // Handle Edit Form Submission
+  if (editCAForm) {
+    editCAForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const caId = editCAId.value;
+      if (!caId) return;
+
+      const payload = {
+        area:              editAreaSelect.value,
+        employee_name:     editEmpNameSelect.value,
+        pay_slip_no:       editPaySlipInput.value.trim(),
+        date_requested:    editDateRequested.value,
+        date_approved:     editDateApproved.value,
+        initial_balance:   parseFloat(editInitialBalance.value) || 0,
+        remaining_balance: parseFloat(editRemainingBalance.value) || 0,
+        deduction_start:   editDeductionStart.value,
+      };
+
+      for (const [key, val] of Object.entries(payload)) {
+        if (!val && val !== 0) {
+          alert('Please fill all fields before updating.');
+          return;
+        }
+      }
+
+      saveEditCABtn.disabled = true;
+      saveEditCABtn.textContent = '⏳ Updating…';
+
+      const { error: updErr } = await db
+        .from('cash_advances')
+        .update(payload)
+        .eq('id', caId);
+
+      if (updErr) {
+        console.error('Update CA error:', updErr);
+        showStatus('❌ Update failed: ' + (updErr.message || 'Unknown error'), 'error');
+        saveEditCABtn.disabled = false;
+        saveEditCABtn.innerHTML = '<span class="btn-icon">💾</span> Update Cash Advance';
+        return;
+      }
+
+      showStatus(`✅ Cash advance for "${payload.employee_name}" updated!`);
+      addLog(`CA updated: ${payload.employee_name} — Initial: ${fmt(payload.initial_balance)}, Rem: ${fmt(payload.remaining_balance)}`);
+
+      saveEditCABtn.disabled = false;
+      saveEditCABtn.innerHTML = '<span class="btn-icon">💾</span> Update Cash Advance';
+      closeEditModal();
+
+      await loadCashTable();
+      await loadDashboard();
+      await loadDeductionEmployees();
     });
   }
 

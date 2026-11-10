@@ -288,6 +288,7 @@
                 <th>Initial</th>
                 <th>Remaining</th>
                 <th>Start Date</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody id="cashAdvancesBody"></tbody>
@@ -295,6 +296,63 @@
           <p class="empty-msg" id="caTableEmpty">No cash advances recorded yet.</p>
         </div>
       </section>
+
+      <!-- ══════════ MODAL: Edit Cash Advance ══════════ -->
+      <div class="modal-overlay hidden" id="editCAModal">
+        <div class="modal-card">
+          <div class="modal-header">
+            <h3 class="modal-title">✏️ Edit Cash Advance</h3>
+            <button type="button" class="modal-close" id="closeEditCAModalBtn" title="Close">&times;</button>
+          </div>
+          <form id="editCAForm" class="form modal-form">
+            <input type="hidden" id="editCAId" />
+            <div class="form-grid-2">
+              <div class="field">
+                <label for="editArea">Area</label>
+                <select id="editArea" name="editArea" required>
+                  <option value="" disabled selected>Select area</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="editEmpName">Employee Name</label>
+                <select id="editEmpName" name="editEmpName" required>
+                  <option value="" disabled selected>Select employee</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="editPaySlip">Pay Slip No.</label>
+                <input type="text" id="editPaySlip" name="editPaySlip" required />
+              </div>
+              <div class="field">
+                <label for="editDateRequested">Date Requested</label>
+                <input type="date" id="editDateRequested" name="editDateRequested" required />
+              </div>
+              <div class="field">
+                <label for="editDateApproved">Date Approved</label>
+                <input type="date" id="editDateApproved" name="editDateApproved" required />
+              </div>
+              <div class="field">
+                <label for="editInitialBalance">Initial Balance</label>
+                <input type="number" id="editInitialBalance" name="editInitialBalance" min="0" step="0.01" required />
+              </div>
+              <div class="field">
+                <label for="editRemainingBalance">Remaining Balance</label>
+                <input type="number" id="editRemainingBalance" name="editRemainingBalance" min="0" step="0.01" required />
+              </div>
+              <div class="field">
+                <label for="editDeductionStart">Date of Deduction (Start)</label>
+                <input type="date" id="editDeductionStart" name="editDeductionStart" required />
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn secondary" id="cancelEditCABtn">Cancel</button>
+              <button type="submit" class="btn primary" id="saveEditCABtn">
+                <span class="btn-icon">💾</span> Update Cash Advance
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
 
       <!-- ══════════ PAGE: Deductions ══════════ -->
       <section class="page" id="page-deductions" data-role="admin">

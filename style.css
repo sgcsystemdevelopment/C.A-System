@@ -944,6 +944,14 @@ input[readonly] {
   cursor: not-allowed;
 }
 
+/* Auto-generated payslip field - make it look distinct but readable */
+#newEmpPaySlip[readonly] {
+  opacity: 1;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--primary);
+}
+
 /* ═══════ Item List (areas / employees) ═══════ */
 .item-list {
   list-style: none;

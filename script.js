@@ -373,7 +373,61 @@ document.addEventListener('DOMContentLoaded', () => {
     return data;
   }
 
-  // Auto-fill pay slip and area
+  // ═══════════════════════════════════════
+  //  AUTO-GENERATE PAY SLIP NUMBER
+  // ═══════════════════════════════════════
+  // Format: First 3 letters of Area (uppercase) + "-" + 3-digit global sequence
+  // Sequence is continuous across all areas (does not restart per area).
+  // Example: ADM-001 → FIN-002 → HR-003 → ADM-004
+
+  async function getNextPaySlipNumber(areaName) {
+    if (!areaName) return '';
+
+    // Build the area prefix: first 3 letters, uppercase
+    const prefix = areaName.replace(/[^a-zA-Z]/g, '').substring(0, 3).toUpperCase();
+    if (!prefix) return '';
+
+    // Find the highest sequence number across ALL existing pay slip numbers
+    const { data, error } = await db
+      .from('employees')
+      .select('pay_slip_no');
+
+    if (error) {
+      console.error('Error fetching payslip numbers:', error);
+      return prefix + '-001';
+    }
+
+    let maxSeq = 0;
+
+    (data || []).forEach(emp => {
+      const ps = emp.pay_slip_no || '';
+      // Match pattern: any letters + "-" + digits (e.g., ADM-001, FIN-012)
+      const match = ps.match(/^[A-Za-z]+-(\d+)$/);
+      if (match) {
+        const seq = parseInt(match[1], 10);
+        if (seq > maxSeq) maxSeq = seq;
+      }
+    });
+
+    const nextSeq = maxSeq + 1;
+    const padded  = String(nextSeq).padStart(3, '0');
+    return `${prefix}-${padded}`;
+  }
+
+  // When the area dropdown changes on Add Employee form, auto-generate payslip
+  newEmpArea.addEventListener('change', async () => {
+    const selectedArea = newEmpArea.value;
+    if (!selectedArea) {
+      newEmpPaySlip.value = '';
+      return;
+    }
+
+    newEmpPaySlip.value = '⏳ Generating…';
+    const payslip = await getNextPaySlipNumber(selectedArea);
+    newEmpPaySlip.value = payslip;
+  });
+
+  // Auto-fill pay slip and area on CA Form when employee is selected
   empNameSelect.addEventListener('change', () => {
     const selected = empNameSelect.selectedOptions[0];
     if (selected) {
@@ -388,6 +442,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const area    = newEmpArea.value;
     const paySlip = newEmpPaySlip.value.trim();
     if (!name) { alert('Enter employee name.'); return; }
+    if (!area) { alert('Select an area.'); return; }
+    if (!paySlip || paySlip === '⏳ Generating…') { alert('Payslip not generated yet. Please select an area.'); return; }
 
     const { error } = await db.from('employees').insert([{
       name,
@@ -399,8 +455,8 @@ document.addEventListener('DOMContentLoaded', () => {
     newEmpName.value = '';
     newEmpPaySlip.value = '';
     newEmpArea.selectedIndex = 0;
-    showStatus(`✅ Employee "${name}" added.`);
-    addLog(`Employee added: ${name} (${area || 'no area'})`);
+    showStatus(`✅ Employee "${name}" added with Pay Slip: ${paySlip}`);
+    addLog(`Employee added: ${name} (${area}) — Pay Slip: ${paySlip}`);
     await loadEmployees();
     await loadDeductionEmployees();
   });
